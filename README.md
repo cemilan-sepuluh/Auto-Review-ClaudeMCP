@@ -20,9 +20,17 @@ cd pr-review-mcp
 pip install -r requirements.txt
 ```
 
-## First Run — Token Setup
+## Authentication
 
-Run the server once manually to store your GitHub token and repository in your OS keychain:
+The server looks for credentials in this order:
+
+1. **Environment variables** (`GITHUB_TOKEN`, `GITHUB_REPO`) — for Claude Desktop
+2. **OS keychain** (via `keyring`) — for Claude Code and local development
+3. **Interactive prompt** — fallback from the terminal
+
+### Option A — Keychain (recommended for Claude Code)
+
+Run the server once manually to store your credentials in the OS keychain:
 
 ```bash
 python server.py
@@ -33,7 +41,11 @@ You will be prompted for:
 1. **GITHUB_TOKEN** — A GitHub Personal Access Token (classic) with `repo` scope. Generate one at [github.com/settings/tokens](https://github.com/settings/tokens).
 2. **GITHUB_REPO** — The repository in `owner/repo` format (e.g. `octocat/Hello-World`).
 
-Both values are stored securely in your OS keychain via the `keyring` library and will not be prompted again.
+Both values are stored securely in your OS keychain and will not be prompted again.
+
+### Option B — Environment variables (recommended for Claude Desktop)
+
+Pass credentials directly in the MCP config (see examples below). This avoids the interactive prompt, which does not work in Claude Desktop's background processes.
 
 ## Claude Desktop Configuration
 
@@ -46,7 +58,11 @@ Add the following to your Claude Desktop config file:
   "mcpServers": {
     "pr-review": {
       "command": "python",
-      "args": ["C:\\path\\to\\pr-review-mcp\\server.py"]
+      "args": ["C:\\path\\to\\pr-review-mcp\\server.py"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here",
+        "GITHUB_REPO": "owner/repo"
+      }
     }
   }
 }
@@ -59,11 +75,17 @@ Add the following to your Claude Desktop config file:
   "mcpServers": {
     "pr-review": {
       "command": "python",
-      "args": ["/path/to/pr-review-mcp/server.py"]
+      "args": ["/path/to/pr-review-mcp/server.py"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here",
+        "GITHUB_REPO": "owner/repo"
+      }
     }
   }
 }
 ```
+
+> **Note:** If you already stored credentials in the keychain (Option A), you can omit the `env` block — the server will find them automatically.
 
 After editing the config, **restart Claude Desktop**.
 
@@ -157,7 +179,15 @@ cd pr-review-mcp
 pip install -r requirements.txt
 ```
 
-### Первый запуск — настройка токена
+### Аутентификация
+
+Сервер ищет учётные данные в следующем порядке:
+
+1. **Переменные окружения** (`GITHUB_TOKEN`, `GITHUB_REPO`) -  для Claude Desktop
+2. **Системный keychain** (через `keyring`) -  для Claude Code и локальной разработки
+3. **Интерактивный ввод** —  при ручном запуске из терминала
+
+#### Вариант A — Keychain (рекомендуется для Claude Code)
 
 Запустите сервер вручную, чтобы сохранить токен и репозиторий в системный keychain:
 
@@ -170,7 +200,11 @@ python server.py
 1. **GITHUB_TOKEN** — Personal Access Token (classic) с правами `repo`. Создать можно здесь: [github.com/settings/tokens](https://github.com/settings/tokens).
 2. **GITHUB_REPO** — Репозиторий в формате `owner/repo` (например `octocat/Hello-World`).
 
-Оба значения сохраняются в системном keychain через библиотеку `keyring` и больше запрашиваться не будут.
+Оба значения сохраняются в системном keychain и больше запрашиваться не будут.
+
+#### Вариант B — Переменные окружения (рекомендуется для Claude Desktop)
+
+Передайте учётные данные прямо в конфиге MCP (см. примеры ниже). Это позволяет обойти интерактивный ввод, который не работает в фоновых процессах Claude Desktop.
 
 ### Настройка Claude Desktop
 
@@ -183,7 +217,11 @@ python server.py
   "mcpServers": {
     "pr-review": {
       "command": "python",
-      "args": ["C:\\path\\to\\pr-review-mcp\\server.py"]
+      "args": ["C:\\path\\to\\pr-review-mcp\\server.py"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here",
+        "GITHUB_REPO": "owner/repo"
+      }
     }
   }
 }
@@ -196,11 +234,17 @@ python server.py
   "mcpServers": {
     "pr-review": {
       "command": "python",
-      "args": ["/path/to/pr-review-mcp/server.py"]
+      "args": ["/path/to/pr-review-mcp/server.py"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here",
+        "GITHUB_REPO": "owner/repo"
+      }
     }
   }
 }
 ```
+
+> **Примечание:** Если вы уже сохранили токен в keychain (Вариант A), блок `env` можно не указывать — сервер найдёт данные автоматически.
 
 После изменения конфига **перезапустите Claude Desktop**.
 

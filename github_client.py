@@ -1,5 +1,6 @@
 """GitHub API client — authentication and HTTP helpers."""
 
+import os
 import keyring
 import requests
 
@@ -12,8 +13,8 @@ REPO = None
 # ── Secrets ──────────────────────────────────────────────
 
 def get_secret(key: str) -> str:
-    """Read a secret from the system keychain, prompting if missing."""
-    value = keyring.get_password(SERVICE, key)
+    """Read a secret from env, then keychain, then interactive prompt."""
+    value = os.environ.get(key) or keyring.get_password(SERVICE, key)
     if not value:
         print(f"\n[pr-review-mcp] {key} not found in keychain.")
         value = input(f"Enter {key}: ")
