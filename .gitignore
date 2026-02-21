@@ -10,3 +10,4 @@ build/
 .idea/
 .vscode/
 review-report.html
+error_report.log

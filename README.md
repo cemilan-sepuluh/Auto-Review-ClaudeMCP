@@ -135,6 +135,32 @@ python server.py --reset
 
 Then run `python server.py` again to enter new values.
 
+## Troubleshooting
+
+Errors are automatically logged to `error_report.log` in the project directory.
+
+To enable verbose debug logging, add `MCP_DEBUG` to your config:
+
+```json
+"env": {
+  "GITHUB_TOKEN": "ghp_your_token_here",
+  "GITHUB_REPO": "owner/repo",
+  "MCP_DEBUG": "1"
+}
+```
+
+Or set it in your terminal before running manually:
+
+```bash
+MCP_DEBUG=1 python server.py
+```
+
+Common issues:
+
+- **`latin-1` codec error** — Your `GITHUB_TOKEN` contains non-ASCII characters. Make sure you copied the real token, not a placeholder.
+- **Server hangs on startup** — Credentials are missing and the server is waiting for interactive input. Use environment variables (Option B) or run `python server.py` manually first to save them to keychain.
+- **401 Unauthorized** — Token is invalid or expired. Run `python server.py --reset` and enter a new token.
+
 ## Architecture
 
 ```
@@ -294,6 +320,32 @@ python server.py --reset
 
 Затем запустите `python server.py` снова для ввода новых значений.
 
+### Диагностика ошибок
+
+Ошибки автоматически записываются в `error_report.log` в папке проекта.
+
+Для включения подробного дебаг-логирования добавьте `MCP_DEBUG` в конфиг:
+
+```json
+"env": {
+  "GITHUB_TOKEN": "ghp_your_token_here",
+  "GITHUB_REPO": "owner/repo",
+  "MCP_DEBUG": "1"
+}
+```
+
+Или при ручном запуске из терминала:
+
+```bash
+MCP_DEBUG=1 python server.py
+```
+
+Частые проблемы:
+
+- **Ошибка `latin-1` codec** — В `GITHUB_TOKEN` попали не-ASCII символы. Убедитесь, что скопировали настоящий токен, а не плейсхолдер.
+- **Сервер зависает при запуске** — Нет сохранённых учётных данных и сервер ждёт ввода. Используйте переменные окружения (Вариант B) или запустите `python server.py` вручную для сохранения в keychain.
+- **401 Unauthorized** — Токен невалиден или истёк. Выполните `python server.py --reset` и введите новый токен.
+
 ### Структура проекта
 
 ```
@@ -301,6 +353,8 @@ pr-review-mcp/
 ├── server.py          — MCP-инструменты и точка входа
 ├── github_client.py   — авторизация и работа с GitHub API
 ├── file_filter.py     — правила фильтрации файлов по расширениям
+├── logger.py          — логирование ошибок и дебаг-режим
+├── launcher.py        — обёртка для запуска из Claude Desktop (UTF-8)
 ├── requirements.txt   — зависимости
 └── README.md
 ```
